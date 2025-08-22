@@ -1,0 +1,56 @@
+{
+  "name": "lcp-performance-tracer",
+  "version": "1.0.0",
+  "description": "A TypeScript library for tracking LCP performance and sending trace data to New Relic",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:types",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "lcp",
+    "performance",
+    "monitoring",
+    "new-relic",
+    "web-vitals",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.8.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5",
+    "eslint": "^8.51.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/lcp-performance-tracer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/lcp-performance-tracer/issues"
+  },
+  "homepage": "https://github.com/your-org/lcp-performance-tracer#readme"
+}

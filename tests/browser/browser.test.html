@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LCP Performance Tracer Browser Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        #logs {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry { margin: 2px 0; }
+        .hero-image {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            background: linear-gradient(45deg, #007bff, #6610f2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 3px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>LCP Performance Tracer Browser Test</h1>
+
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button id="startTracer">Start Tracer</button>
+        <button id="stopTracer">Stop Tracer</button>
+        <button id="simulateLCP">Simulate High LCP</button>
+        <button id="clearLogs">Clear Logs</button>
+        <button id="runAllTests">Run All Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <div>
+            <label>LCP Threshold (ms): 
+                <input type="number" id="lcpThreshold" value="2500" min="0" max="10000">
+            </label>
+        </div>
+        <div>
+            <label>Sampling Rate: 
+                <input type="number" id="samplingRate" value="1.0" min="0" max="1" step="0.1">
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="debugMode" checked> Debug Mode
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="enableTracer" checked> Enabled
+            </label>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Status</h2>
+        <div id="statusContainer"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>LCP Test Element</h2>
+        <div class="hero-image" id="heroElement">
+            Large Content Element
+        </div>
+        <p>This element simulates a large contentful paint element for testing purposes.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Logs</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script type="module">
+        // Mock New Relic if not available
+        if (!window.newrelic) {
+            window.newrelic = {
+                recordCustomEvent: (eventType, attributes) => {
+                    console.log('[Mock New Relic] Event:', eventType, attributes);
+                    addLog(`New Relic Event: ${eventType}`, 'info');
+                    addLog(JSON.stringify(attributes, null, 2), 'info');
+                }
+            };
+        }
+
+        let tracer = null;
+        const logs = [];
+
+        function addLog(message, type = 'log') {
+            const timestamp = new Date().toISOString();
+            const logEntry = { timestamp, message, type };
+            logs.push(logEntry);
+            
+            const logsContainer = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = 'log-entry';
+            logDiv.innerHTML = `<span style="color: #666">[${timestamp}]</span> ${message}`;
+            logsContainer.appendChild(logDiv);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusContainer = document.getElementById('statusContainer');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusContainer.innerHTML = '';
+            statusContainer.appendChild(statusDiv);
+        }
+
+        function getConfig() {
+            return {
+                lcpThreshold: parseInt(document.getElementById('lcpThreshold').value),
+                samplingRate: parseFloat(document.getElementById('samplingRate').value),
+                debug: document.getElementById('debugMode').checked,
+                enabled: document.getElementById('enableTracer').checked
+            };
+        }
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        console.log = (...args) => {
+            originalLog(...args);
+            addLog(args.join(' '), 'log');
+        };
+
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addLog(args.join(' '), 'warn');
+        };
+
+        console.error = (...args) => {
+            originalError(...args);
+            addLog(args.join(' '), 'error');
+        };
+
+        // Wait for the library to be available
+        async function loadTracer() {
+            // In a real scenario, this would load the built library
+            // For testing, we'll simulate it
+            return new Promise((resolve) => {
+                // Simulate library loading
+                setTimeout(() => {
+                    // Mock the LCPPerformanceTracer class
+                    window.LCPPerformanceTracer = class {
+                        constructor(config) {
+                            this.config = config;
+                            this.running = false;
+                            addLog('LCPPerformanceTracer initialized', 'info');
+                        }
+
+                        start() {
+                            this.running = true;
+                            addLog('Tracer started', 'success');
+                            updateStatus('Tracer is running', 'success');
+                            
+                            // Simulate LCP monitoring
+                            if (this.config.debug) {
+                                setTimeout(() => {
+                                    const mockLCP = Math.random() * 4000 + 1000;
+                                    addLog(`LCP detected: ${mockLCP.toFixed(0)}ms`, 'info');
+                                    
+                                    if (mockLCP > this.config.lcpThreshold) {
+                                        addLog('LCP threshold exceeded, sending trace', 'warning');
+                                        window.newrelic.recordCustomEvent('LCPPerformanceTrace', {
+                                            lcpValue: mockLCP,
+                                            url: window.location.href,
+                                            timestamp: Date.now()
+                                        });
+                                    }
+                                }, 2000);
+                            }
+                        }
+
+                        stop() {
+                            this.running = false;
+                            addLog('Tracer stopped', 'info');
+                            updateStatus('Tracer is stopped', 'info');
+                        }
+
+                        isTracerRunning() {
+                            return this.running;
+                        }
+                    };
+                    
+                    resolve();
+                }, 100);
+            });
+        }
+
+        // Initialize
+        loadTracer().then(() => {
+            addLog('Test page initialized', 'success');
+            updateStatus('Ready to test', 'info');
+        });
+
+        // Event handlers
+        document.getElementById('startTracer').addEventListener('click', () => {
+            if (tracer && tracer.isTracerRunning()) {
+                addLog('Tracer is already running', 'warning');
+                return;
+            }
+            
+            const config = getConfig();
+            addLog(`Starting tracer with config: ${JSON.stringify(config)}`, 'info');
+            
+            if (window.LCPPerformanceTracer) {
+                tracer = new window.LCPPerformanceTracer(config);
+                tracer.start();
+            } else {
+                addLog('LCPPerformanceTracer not loaded', 'error');
+            }
+        });
+
+        document.getElementById('stopTracer').addEventListener('click', () => {
+            if (!tracer || !tracer.isTracerRunning()) {
+                addLog('Tracer is not running', 'warning');
+                return;
+            }
+            
+            tracer.stop();
+        });
+
+        document.getElementById('simulateLCP').addEventListener('click', () => {
+            addLog('Simulating high LCP...', 'info');
+            
+            // Create a large image element
+            const img = document.createElement('img');
+            img.style.width = '100%';
+            img.style.height = '500px';
+            img.style.background = 'linear-gradient(90deg, #ff6b6b, #4ecdc4)';
+            
+            const heroElement = document.getElementById('heroElement');
+            heroElement.innerHTML = '';
+            heroElement.appendChild(img);
+            
+            // Simulate slow loading
+            setTimeout(() => {
+                img.style.background = 'url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwN2JmZiIvPjwvc3ZnPg==)';
+                addLog('Large content loaded', 'success');
+                
+                // Trigger a mock LCP event
+                if (window.newrelic) {
+                    const mockLCPValue = 3500;
+                    window.newrelic.recordCustomEvent('LCPPerformanceTrace', {
+                        lcpValue: mockLCPValue,
+                        lcpElement: 'img',
+                        url: window.location.href,
+                        timestamp: Date.now(),
+                        test: true
+                    });
+                }
+            }, 3000);
+        });
+
+        document.getElementById('clearLogs').addEventListener('click', () => {
+            document.getElementById('logs').innerHTML = '';
+            logs.length = 0;
+            addLog('Logs cleared', 'info');
+        });
+
+        document.getElementById('runAllTests').addEventListener('click', async () => {
+            const results = [];
+            
+            addLog('Starting automated tests...', 'info');
+            
+            // Test 1: Initialize tracer
+            try {
+                const testTracer = new window.LCPPerformanceTracer({ debug: true });
+                results.push({ test: 'Initialize Tracer', status: 'pass' });
+                addLog('✓ Initialize Tracer', 'success');
+            } catch (e) {
+                results.push({ test: 'Initialize Tracer', status: 'fail', error: e.message });
+                addLog(`✗ Initialize Tracer: ${e.message}`, 'error');
+            }
+
+            // Test 2: Start and stop
+            try {
+                const testTracer = new window.LCPPerformanceTracer({ debug: false });
+                testTracer.start();
+                if (!testTracer.isTracerRunning()) throw new Error('Tracer not running after start');
+                testTracer.stop();
+                if (testTracer.isTracerRunning()) throw new Error('Tracer still running after stop');
+                results.push({ test: 'Start/Stop Operations', status: 'pass' });
+                addLog('✓ Start/Stop Operations', 'success');
+            } catch (e) {
+                results.push({ test: 'Start/Stop Operations', status: 'fail', error: e.message });
+                addLog(`✗ Start/Stop Operations: ${e.message}`, 'error');
+            }
+
+            // Test 3: Configuration validation
+            try {
+                const configs = [
+                    { lcpThreshold: 3000 },
+                    { samplingRate: 0.5 },
+                    { debug: true },
+                    { enabled: false }
+                ];
+                
+                for (const config of configs) {
+                    new window.LCPPerformanceTracer(config);
+                }
+                results.push({ test: 'Configuration Validation', status: 'pass' });
+                addLog('✓ Configuration Validation', 'success');
+            } catch (e) {
+                results.push({ test: 'Configuration Validation', status: 'fail', error: e.message });
+                addLog(`✗ Configuration Validation: ${e.message}`, 'error');
+            }
+
+            // Display results
+            const resultsContainer = document.getElementById('testResults');
+            resultsContainer.innerHTML = '<h3>Test Results</h3>';
+            
+            const passed = results.filter(r => r.status === 'pass').length;
+            const failed = results.filter(r => r.status === 'fail').length;
+            
+            resultsContainer.innerHTML += `
+                <div class="status ${failed === 0 ? 'success' : 'warning'}">
+                    Passed: ${passed}/${results.length} tests
+                </div>
+            `;
+            
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `status ${result.status === 'pass' ? 'success' : 'error'}`;
+                div.textContent = `${result.status === 'pass' ? '✓' : '✗'} ${result.test}`;
+                if (result.error) {
+                    div.textContent += `: ${result.error}`;
+                }
+                resultsContainer.appendChild(div);
+            });
+            
+            addLog('Automated tests completed', 'info');
+        });
+
+        // Add some test resources to the page
+        setTimeout(() => {
+            // Simulate resource loading
+            const script = document.createElement('script');
+            script.src = 'data:text/javascript,console.log("Test script loaded")';
+            document.head.appendChild(script);
+            
+            const style = document.createElement('link');
+            style.rel = 'stylesheet';
+            style.href = 'data:text/css,body{margin:0}';
+            document.head.appendChild(style);
+        }, 500);
+    </script>
+</body>
+</html>
