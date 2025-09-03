@@ -85,7 +85,7 @@ export class LCPMonitor {
     const checkLCP = (): void => {
       try {
         const entries = performance.getEntriesByType('largest-contentful-paint');
-        if (entries.length > 0) {
+        if (entries && entries.length > 0) {
           const lastEntry = entries[entries.length - 1] as PerformanceLargestContentfulPaint;
           this.handleLCPEntry(lastEntry);
         }
