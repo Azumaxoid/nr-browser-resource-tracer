@@ -14,16 +14,33 @@ A TypeScript library for tracking Largest Contentful Paint (LCP) performance met
 
 ## Installation
 
+### NPM Installation
+
 ```bash
-npm install lcp-performance-tracer
+npm install @azumaxoid/lcp-performance-tracer
+```
+
+### Standalone Browser Usage
+
+You can also use the library directly in the browser without any build tools. Simply include the script tag in your HTML:
+
+```html
+<!-- Latest version from GitHub -->
+<script src="https://github.com/Azumaxoid/nr-browser-resource-tracer/releases/latest/download/lcp-performance-tracer.min.js"></script>
+
+<!-- Or specific version -->
+<script src="https://github.com/Azumaxoid/nr-browser-resource-tracer/releases/download/v1.0.0/lcp-performance-tracer.min.js"></script>
+
+<!-- Or from local file -->
+<script src="path/to/lcp-performance-tracer.min.js"></script>
 ```
 
 ## Quick Start
 
-### Basic Usage
+### Basic Usage (NPM)
 
 ```javascript
-import { LCPPerformanceTracer } from 'lcp-performance-tracer';
+import { LCPPerformanceTracer } from '@azumaxoid/lcp-performance-tracer';
 
 // Create and start the tracer with default settings
 const tracer = LCPPerformanceTracer.autoStart();
@@ -41,6 +58,47 @@ tracer.start();
 
 // Stop the tracer when needed
 tracer.stop();
+```
+
+### Standalone Browser Usage
+
+When using the standalone browser version, the library is available via the global `LCPPerformanceTracer` object:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LCP Performance Monitoring</title>
+  <!-- Include the standalone library -->
+  <script src="https://github.com/Azumaxoid/nr-browser-resource-tracer/releases/latest/download/lcp-performance-tracer.min.js"></script>
+</head>
+<body>
+  <h1>My Application</h1>
+  
+  <script>
+    // The library is available as a global object
+    const tracer = new LCPPerformanceTracer.LCPPerformanceTracer({
+      newRelicAccountId: 'your-account-id',
+      newRelicInsertKey: 'your-insert-key',
+      lcpThreshold: 2500,
+      enableDebug: true,
+      collectResourceDetails: true
+    });
+    
+    // Start monitoring
+    tracer.start();
+    
+    // Access other classes if needed
+    const config = new LCPPerformanceTracer.ConfigManager({
+      newRelicAccountId: 'your-account-id',
+      newRelicInsertKey: 'your-insert-key'
+    });
+    
+    // Check library version
+    console.log('LCP Tracer Version:', LCPPerformanceTracer.version);
+  </script>
+</body>
+</html>
 ```
 
 ### TypeScript Usage
@@ -267,8 +325,14 @@ npm run test:watch
 ## Building
 
 ```bash
-# Build the library
+# Build the library (all formats)
 npm run build
+
+# Build standalone browser version only
+npm run build:standalone
+
+# Watch mode for standalone development
+npm run build:standalone:watch
 
 # Clean build artifacts
 npm run clean
@@ -279,6 +343,19 @@ npm run lint
 # Type checking
 npm run typecheck
 ```
+
+## Standalone Build
+
+The standalone build creates UMD bundles that can be used directly in browsers:
+
+- `dist/standalone/lcp-performance-tracer.js` - Development version (with source maps)
+- `dist/standalone/lcp-performance-tracer.min.js` - Production version (minified, with source maps)
+
+### File Sizes
+
+- Development build: ~34KB
+- Production build (minified): ~15KB
+- Production build (minified + gzipped): ~5KB
 
 ## License
 

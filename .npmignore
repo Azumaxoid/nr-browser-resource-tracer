@@ -1,0 +1,36 @@
+# Source files
+src/
+tests/
+
+# Config files
+.eslintrc.js
+jest.config.js
+jest.setup.js
+tsconfig*.json
+
+# Git files
+.git/
+.gitignore
+
+# Development directories
+.kiro/
+coverage/
+node_modules/
+
+# Test files
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+
+# Misc
+*.log
+.DS_Store
+.env*
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/

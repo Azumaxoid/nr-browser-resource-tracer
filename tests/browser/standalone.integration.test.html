@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone LCP Performance Tracer - Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .test-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .result-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        .result-item.pass {
+            border-left-color: #28a745;
+        }
+        .result-item.fail {
+            border-left-color: #dc3545;
+        }
+        .code {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+        }
+        img.test-image {
+            max-width: 600px;
+            height: 400px;
+            margin: 20px 0;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Standalone LCP Performance Tracer - Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Environment</h2>
+        <p>Loading standalone bundle from: <code>../../dist/standalone/lcp-performance-tracer.js</code></p>
+        <div id="load-status" class="status pending">Loading...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>API Availability Tests</h2>
+        <div id="api-tests">
+            <div class="status pending">Running tests...</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Functionality Tests</h2>
+        <div id="functionality-tests">
+            <div class="status pending">Running tests...</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>LCP Test Element</h2>
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Crect width='600' height='400' fill='%2307c'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='24' fill='white'%3ELCP Test Image%3C/text%3E%3C/svg%3E" 
+             alt="Test Image for LCP" 
+             class="test-image">
+        <p>This image should trigger an LCP event when loaded.</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <!-- Load the standalone bundle -->
+    <script src="../../dist/standalone/lcp-performance-tracer.js"></script>
+    
+    <script>
+        const results = [];
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(test, passed, details) {
+            results.push({ test, passed, details });
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item ${passed ? 'pass' : 'fail'}`;
+            resultItem.innerHTML = `
+                <strong>${test}</strong>
+                <span class="status ${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span>
+                ${details ? `<div class="error">${details}</div>` : ''}
+            `;
+            resultsDiv.appendChild(resultItem);
+        }
+
+        // Test 1: Check if bundle loaded
+        window.addEventListener('load', () => {
+            const loadStatus = document.getElementById('load-status');
+            
+            if (typeof window.LCPPerformanceTracer !== 'undefined') {
+                loadStatus.textContent = 'Bundle Loaded Successfully';
+                loadStatus.className = 'status pass';
+                addResult('Bundle Loading', true);
+                
+                // Run API tests
+                runAPITests();
+                
+                // Run functionality tests
+                runFunctionalityTests();
+            } else {
+                loadStatus.textContent = 'Bundle Failed to Load';
+                loadStatus.className = 'status fail';
+                addResult('Bundle Loading', false, 'window.LCPPerformanceTracer is undefined');
+            }
+        });
+
+        function runAPITests() {
+            const apiTestsDiv = document.getElementById('api-tests');
+            apiTestsDiv.innerHTML = '';
+            
+            // Test 2: Check for main classes
+            const expectedClasses = [
+                'LCPPerformanceTracer',
+                'ConfigManager',
+                'LCPMonitor',
+                'ResourceCollector',
+                'NewRelicReporter'
+            ];
+            
+            expectedClasses.forEach(className => {
+                const exists = typeof window.LCPPerformanceTracer[className] === 'function';
+                addResult(`Class: ${className}`, exists, exists ? null : 'Class not found');
+                
+                const status = document.createElement('div');
+                status.className = `status ${exists ? 'pass' : 'fail'}`;
+                status.textContent = `${className}: ${exists ? 'Available' : 'Not Found'}`;
+                apiTestsDiv.appendChild(status);
+            });
+            
+            // Test 3: Check for types export
+            const typesExist = typeof window.LCPPerformanceTracer.types === 'object';
+            addResult('Types Export', typesExist, typesExist ? null : 'Types object not found');
+            
+            // Test 4: Check for version
+            const versionExists = typeof window.LCPPerformanceTracer.version === 'string';
+            addResult('Version Property', versionExists, 
+                versionExists ? `Version: ${window.LCPPerformanceTracer.version}` : 'Version not found');
+            
+            const versionStatus = document.createElement('div');
+            versionStatus.className = `status ${versionExists ? 'pass' : 'fail'}`;
+            versionStatus.textContent = `Version: ${versionExists ? window.LCPPerformanceTracer.version : 'Not Found'}`;
+            apiTestsDiv.appendChild(versionStatus);
+        }
+
+        function runFunctionalityTests() {
+            const funcTestsDiv = document.getElementById('functionality-tests');
+            funcTestsDiv.innerHTML = '';
+            
+            try {
+                // Test 5: Create ConfigManager instance
+                const config = new window.LCPPerformanceTracer.ConfigManager({
+                    newRelicAccountId: 'test-account',
+                    newRelicInsertKey: 'test-key',
+                    enableDebug: true
+                });
+                addResult('ConfigManager Instantiation', true);
+                
+                // Test 6: Validate config
+                const isValid = config.validate();
+                addResult('Config Validation', isValid, isValid ? null : 'Config validation failed');
+                
+                // Test 7: Create LCPMonitor instance
+                const lcpMonitor = new window.LCPPerformanceTracer.LCPMonitor(
+                    (entry) => console.log('LCP Entry:', entry)
+                );
+                addResult('LCPMonitor Instantiation', true);
+                
+                // Test 8: Create ResourceCollector instance
+                const resourceCollector = new window.LCPPerformanceTracer.ResourceCollector();
+                addResult('ResourceCollector Instantiation', true);
+                
+                // Test 9: Collect resources
+                const resources = resourceCollector.collect();
+                const hasResources = Array.isArray(resources) && resources.length > 0;
+                addResult('Resource Collection', hasResources, 
+                    hasResources ? `Collected ${resources.length} resources` : 'No resources collected');
+                
+                // Test 10: Create NewRelicReporter instance
+                const reporter = new window.LCPPerformanceTracer.NewRelicReporter(
+                    'test-account',
+                    'test-key'
+                );
+                addResult('NewRelicReporter Instantiation', true);
+                
+                // Test 11: Create LCPPerformanceTracer instance
+                const tracer = new window.LCPPerformanceTracer.LCPPerformanceTracer({
+                    newRelicAccountId: 'test-account',
+                    newRelicInsertKey: 'test-key',
+                    enableDebug: true,
+                    collectResourceDetails: true
+                });
+                addResult('LCPPerformanceTracer Instantiation', true);
+                
+                // Test 12: Start tracer
+                tracer.start();
+                addResult('Tracer Start', true);
+                
+                // Test 13: Stop tracer after a short delay
+                setTimeout(() => {
+                    tracer.stop();
+                    addResult('Tracer Stop', true);
+                    
+                    // Summary
+                    const summary = document.createElement('div');
+                    summary.className = 'test-section';
+                    const passed = results.filter(r => r.passed).length;
+                    const failed = results.filter(r => !r.passed).length;
+                    summary.innerHTML = `
+                        <h2>Test Summary</h2>
+                        <div class="status ${failed === 0 ? 'pass' : 'fail'}">
+                            Total: ${results.length} | Passed: ${passed} | Failed: ${failed}
+                        </div>
+                    `;
+                    document.body.appendChild(summary);
+                    
+                    funcTestsDiv.innerHTML = `<div class="status pass">All functionality tests completed</div>`;
+                }, 2000);
+                
+            } catch (error) {
+                addResult('Functionality Tests', false, error.message);
+                funcTestsDiv.innerHTML = `<div class="status fail">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
