@@ -1,6 +1,6 @@
 {
   "name": "@azumaxoid/lcp-performance-tracer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A TypeScript library for tracking LCP performance and sending trace data to New Relic",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
